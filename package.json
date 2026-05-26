@@ -1,0 +1,19 @@
+{
+  "name": "vedaai-assessment-creator",
+  "private": true,
+  "version": "1.0.0",
+  "description": "AI assessment creator with Next.js, Express, MongoDB, Redis, BullMQ and WebSockets.",
+  "scripts": {
+    "dev": "concurrently \"npm run dev --workspace frontend\" \"npm run dev --workspace backend\"",
+    "build": "npm run build --workspace frontend && npm run build --workspace backend",
+    "typecheck": "npm run typecheck --workspace frontend && npm run typecheck --workspace backend",
+    "lint": "npm run lint --workspace frontend"
+  },
+  "workspaces": [
+    "frontend",
+    "backend"
+  ],
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}
