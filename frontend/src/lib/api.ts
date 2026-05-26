@@ -1,6 +1,11 @@
 import type { Assignment, AssignmentForm } from "@/types";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+const API_URL = (process.env.NEXT_PUBLIC_API_URL ?? browserApiUrl()).replace(/\/$/, "");
+
+function browserApiUrl() {
+  if (typeof window === "undefined") return "http://localhost:4000";
+  return `${window.location.protocol}//${window.location.hostname}:4000`;
+}
 
 export async function createAssignment(form: AssignmentForm) {
   const body = new FormData();

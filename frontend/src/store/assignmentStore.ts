@@ -134,7 +134,7 @@ export const useAssignmentStore = create<AssignmentState>((set, get) => ({
   openOutput: (id) => set({ activeAssignmentId: id, view: "output" }),
   connectSocket: () => {
     if (get().socket || typeof window === "undefined") return;
-    const wsUrl = process.env.NEXT_PUBLIC_WS_URL ?? "ws://localhost:4000/ws";
+    const wsUrl = process.env.NEXT_PUBLIC_WS_URL ?? browserWsUrl();
     const socket = new WebSocket(wsUrl);
     socket.onmessage = (message) => {
       try {
@@ -174,6 +174,11 @@ export const useAssignmentStore = create<AssignmentState>((set, get) => ({
     }, 1500);
   }
 }));
+
+function browserWsUrl() {
+  const protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
+  return `${protocol}//${window.location.hostname}:4000/ws`;
+}
 
 function inferTitle(form: AssignmentForm) {
   const instructionTopic = form.instructions.match(/(?:for|on|about)\s+([a-z0-9 -]{3,60})/i)?.[1]?.trim();
