@@ -5,6 +5,7 @@ import { useAssignmentStore } from "@/store/assignmentStore";
 
 export function Sidebar() {
   const setView = useAssignmentStore((state) => state.setView);
+  const startCreate = useAssignmentStore((state) => state.startCreate);
   const assignments = useAssignmentStore((state) => state.assignments);
 
   return (
@@ -14,7 +15,7 @@ export function Sidebar() {
         <strong>VedaAI</strong>
       </div>
 
-      <button className="createButton" onClick={() => setView("create")}>
+      <button className="createButton" onClick={startCreate}>
         <Sparkles size={15} />
         Create Assignment
       </button>
@@ -41,7 +42,7 @@ export function Sidebar() {
         </div>
       </div>
 
-      <button className="mobileFab" onClick={() => setView("create")} aria-label="Create assignment">
+      <button className="mobileFab" onClick={startCreate} aria-label="Create assignment">
         <Plus size={18} />
       </button>
     </aside>

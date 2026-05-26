@@ -10,9 +10,6 @@ export function Topbar() {
   return (
     <header className="topbar">
       <div className="crumb">
-        <button className="iconButton" onClick={() => setView(view === "output" ? "list" : "list")} aria-label="Back">
-          <MoveLeft size={18} />
-        </button>
         <Grid2X2 size={15} />
         <span>Assignment</span>
       </div>

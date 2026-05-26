@@ -20,6 +20,10 @@ export function renderPdf(assignment: AssignmentRecord) {
     doc.fillColor("#111");
     section.questions.forEach((question, index) => {
       doc.moveDown(0.45).fontSize(11).text(`${index + 1}. ${question.text}`);
+      question.options?.forEach((option, optionIndex) => {
+        const label = String.fromCharCode(65 + optionIndex);
+        doc.fontSize(10).text(`   ${label}. ${option}`);
+      });
       doc.fontSize(9).fillColor("#555").text(`Difficulty: ${question.difficulty}   Marks: ${question.marks}`);
       doc.fillColor("#111");
     });

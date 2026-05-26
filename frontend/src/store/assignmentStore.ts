@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { createAssignment, deleteAssignment, fetchAssignment, regenerateAssignment } from "@/lib/api";
+import { createAssignment, deleteAssignment, fetchAssignment, fetchAssignments, regenerateAssignment } from "@/lib/api";
 import type { Assignment, AssignmentForm, JobEvent, JobStatus, QuestionType, ViewMode } from "@/types";
 
 const defaultTypes: QuestionType[] = [
@@ -17,7 +17,10 @@ type AssignmentState = {
   status: JobStatus;
   socket?: WebSocket;
   error?: string;
+  hasLoadedAssignments: boolean;
   setView: (view: ViewMode) => void;
+  startCreate: () => void;
+  loadAssignments: () => Promise<void>;
   updateForm: (patch: Partial<AssignmentForm>) => void;
   updateQuestionType: (id: string, patch: Partial<QuestionType>) => void;
   addQuestionType: () => void;
@@ -31,22 +34,51 @@ type AssignmentState = {
   pollAssignment: (assignmentId: string) => void;
 };
 
-const initialForm: AssignmentForm = {
-  title: "AI Generated Assessment",
-  dueDate: "",
-  instructions: "",
-  sourceText: "",
-  sourceFile: undefined,
-  questionTypes: defaultTypes
-};
+function createInitialForm(): AssignmentForm {
+  return {
+    title: "AI Generated Assessment",
+    dueDate: "",
+    instructions: "",
+    sourceText: "",
+    sourceFile: undefined,
+    questionTypes: defaultTypes.map((type) => ({ ...type }))
+  };
+}
 
 export const useAssignmentStore = create<AssignmentState>((set, get) => ({
   view: "list",
-  form: initialForm,
+  form: createInitialForm(),
   assignments: [],
   status: "idle",
+  hasLoadedAssignments: false,
   setView: (view) => set({ view, error: undefined }),
+  startCreate: () =>
+    set({
+      view: "create",
+      form: createInitialForm(),
+      activeAssignmentId: undefined,
+      status: "idle",
+      error: undefined
+    }),
   updateForm: (patch) => set((state) => ({ form: { ...state.form, ...patch } })),
+  loadAssignments: async () => {
+    if (get().hasLoadedAssignments) return;
+    set({ status: "processing", error: undefined });
+    try {
+      const assignments = await fetchAssignments();
+      set({
+        assignments,
+        hasLoadedAssignments: true,
+        status: "idle"
+      });
+    } catch (error) {
+      set({
+        hasLoadedAssignments: true,
+        status: "failed",
+        error: error instanceof Error ? error.message : "Unable to load assignments."
+      });
+    }
+  },
   updateQuestionType: (id, patch) =>
     set((state) => ({
       form: {

@@ -28,6 +28,14 @@ export function OutputPage() {
         <h1>Generating assessment</h1>
         <p>AI is structuring sections, balancing marks, and preparing a readable question paper.</p>
         <div className="progressTrack"><span /></div>
+        <div className="paperSkeleton" aria-hidden="true">
+          <span className="skeletonLine title" />
+          <span className="skeletonLine" />
+          <span className="skeletonLine" />
+          <span className="skeletonLine wide" />
+          <span className="skeletonLine" />
+          <span className="skeletonLine short" />
+        </div>
         {error && <p className="softError">{error}</p>}
       </section>
     );
@@ -36,11 +44,11 @@ export function OutputPage() {
   return (
     <section className="outputPage">
       <div className="actionBar">
-        <div>
+        <div className="actionInfo">
           <h1>{assignment.paper.title}</h1>
           <p>Assigned {format(new Date(assignment.assignedOn), "dd MMM yyyy")} - Due {format(new Date(assignment.dueDate), "dd MMM yyyy")}</p>
         </div>
-        <div>
+        <div className="actionButtons">
           <button onClick={() => setView("list")}><ArrowLeft size={17} /> Back</button>
           <a className="primaryDark" href={pdfUrl(assignment.id)}><Download size={17} /> Download PDF</a>
         </div>
@@ -69,15 +77,30 @@ export function OutputPage() {
               <p>{section.instruction}</p>
             </div>
             <ol>
-              {section.questions.map((question) => (
-                <li key={question.id}>
-                  <div className="questionText">{question.text}</div>
-                  <div className="questionMeta">
-                    <span className={`difficulty ${question.difficulty}`}>{question.difficulty}</span>
-                    <strong>{question.marks} marks</strong>
-                  </div>
-                </li>
-              ))}
+              {section.questions.map((question) => {
+                const options = question.options?.length
+                  ? question.options
+                  : isMcqSection(section.title)
+                    ? fallbackMcqOptions(question.text, assignment.paper?.title ?? assignment.title)
+                    : [];
+
+                return (
+                  <li key={question.id}>
+                    <div className="questionText">{question.text}</div>
+                    {options.length > 0 && (
+                    <ol className="mcqOptions" type="A">
+                      {options.map((option, index) => (
+                        <li key={`${question.id}-${index}`}>{option}</li>
+                      ))}
+                    </ol>
+                    )}
+                    <div className="questionMeta">
+                      <span className={`difficulty ${question.difficulty}`}>{question.difficulty}</span>
+                      <strong>{question.marks} marks</strong>
+                    </div>
+                  </li>
+                );
+              })}
             </ol>
           </section>
         ))}
@@ -86,4 +109,25 @@ export function OutputPage() {
   );
 }
 
+function isMcqSection(title: string) {
+  return /multiple choice|mcq/i.test(title);
+}
 
+function fallbackMcqOptions(questionText: string, title: string) {
+  const topic = title || "This topic";
+  if (/what is|define/i.test(questionText)) {
+    return [
+      `A correct definition related to ${topic}`,
+      "An unrelated historical event",
+      "A formatting style only",
+      "None of the above"
+    ];
+  }
+
+  return [
+    `A valid concept from ${topic}`,
+    "A distractor that does not match the lesson",
+    "A partially related but incorrect option",
+    "All of the above"
+  ];
+}

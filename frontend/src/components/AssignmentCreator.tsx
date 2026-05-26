@@ -1,7 +1,7 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, Calendar, Mic, Plus, UploadCloud, X } from "lucide-react";
-import { useMemo, useState } from "react";
+import { ArrowLeft, ArrowRight, Calendar, CheckCircle2, FileText, Mic, Plus, UploadCloud, X } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
 import { useAssignmentStore } from "@/store/assignmentStore";
 
 export function AssignmentCreator() {
@@ -13,6 +13,7 @@ export function AssignmentCreator() {
   const submit = useAssignmentStore((state) => state.submit);
   const setView = useAssignmentStore((state) => state.setView);
   const [error, setError] = useState("");
+  const dateInputRef = useRef<HTMLInputElement>(null);
 
   const totals = useMemo(() => {
     return form.questionTypes.reduce(
@@ -50,7 +51,7 @@ export function AssignmentCreator() {
         <p>Basic information about your assignment</p>
 
         <label className="uploadBox">
-          <UploadCloud size={22} />
+          {form.sourceFile ? <CheckCircle2 className="uploadSuccessIcon" size={24} /> : <UploadCloud size={22} />}
           <strong>Choose a file or drag & drop it here</strong>
           <span>PDF, JPEG, PNG, upto 10MB</span>
           <input
@@ -63,13 +64,40 @@ export function AssignmentCreator() {
           />
           <em>Browse Files</em>
         </label>
+        {form.sourceFile && (
+          <div className="uploadedFile">
+            <FileText size={18} />
+            <div>
+              <strong>{form.sourceFile.name}</strong>
+              <span>{formatFileSize(form.sourceFile.size)} uploaded</span>
+            </div>
+            <button type="button" onClick={() => updateForm({ sourceText: "", sourceFile: undefined })}>
+              <X size={15} />
+            </button>
+          </div>
+        )}
         <p className="uploadHint">Upload images of your preferred document/image</p>
 
         <label className="fieldLabel dateField">
           Due Date
           <span>
-            <input type="date" value={form.dueDate} onChange={(event) => updateForm({ dueDate: event.target.value })} />
-            <Calendar size={17} />
+            <input
+              ref={dateInputRef}
+              type="date"
+              value={form.dueDate}
+              onChange={(event) => updateForm({ dueDate: event.target.value })}
+            />
+            <button
+              type="button"
+              className="calendarPickerButton"
+              aria-label="Open due date picker"
+              onClick={() => {
+                dateInputRef.current?.showPicker?.();
+                dateInputRef.current?.focus();
+              }}
+            >
+              <Calendar size={18} />
+            </button>
           </span>
         </label>
 
@@ -128,6 +156,12 @@ export function AssignmentCreator() {
   );
 }
 
+function formatFileSize(bytes: number) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
 function NumberStepper({ value, onChange, min }: { value: number; onChange: (value: number) => void; min: number }) {
   return (
     <div className="stepperInput">
@@ -137,4 +171,3 @@ function NumberStepper({ value, onChange, min }: { value: number; onChange: (val
     </div>
   );
 }
-

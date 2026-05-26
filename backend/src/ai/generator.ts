@@ -16,8 +16,9 @@ export function buildPrompt(input: AssignmentInput) {
     `Question blueprint: ${blueprint}`,
     `Teacher instructions: ${input.instructions || "No extra instructions"}`,
     `Reference material: ${input.sourceText || "Use grade-appropriate general knowledge for the topic."}`,
-    "Schema: { title, durationMinutes, totalMarks, sections: [{ id, title, instruction, questions: [{ id, text, difficulty, marks }] }] }.",
+    "Schema: { title, durationMinutes, totalMarks, sections: [{ id, title, instruction, questions: [{ id, text, options, difficulty, marks }] }] }.",
     "Difficulty values must be easy, medium, or hard. Group related questions into Section A, Section B, etc.",
+    "For Multiple Choice Questions, include exactly four options as an array of strings. For non-MCQ questions, omit options.",
     "Do not generate questions about electricity, circuits, Ohm's law, voltage, current, or resistors unless those topics appear in the reference material."
   ].join("\n");
 }
@@ -55,20 +56,45 @@ export async function generatePaper(input: AssignmentInput): Promise<GeneratedPa
   return isGroundedInSource(paper, input) ? paper : fallbackPaper(input);
 }
 
+export function hydrateMissingMcqOptions(paper: GeneratedPaper, input: AssignmentInput): GeneratedPaper {
+  return {
+    ...paper,
+    sections: paper.sections.map((section) => {
+      if (!isMcq(section.title)) return section;
+      return {
+        ...section,
+        questions: section.questions.map((question, index) => ({
+          ...question,
+          options: question.options?.length === 4 ? question.options : makeOptions(input, index)
+        }))
+      };
+    })
+  };
+}
+
 function normalizePaper(value: unknown, input: AssignmentInput): GeneratedPaper {
   const paper = value as Partial<GeneratedPaper>;
   const sections = Array.isArray(paper.sections) && paper.sections.length > 0 ? paper.sections : fallbackPaper(input).sections;
-  const normalizedSections = sections.map((section, sectionIndex) => ({
-    id: section.id || String.fromCharCode(97 + sectionIndex),
-    title: section.title || `Section ${String.fromCharCode(65 + sectionIndex)}`,
-    instruction: section.instruction || "Attempt all questions.",
-    questions: (section.questions || []).map((question, questionIndex) => ({
-      id: question.id || randomUUID(),
-      text: question.text || `Question ${questionIndex + 1}`,
-      difficulty: normalizeDifficulty(question.difficulty),
-      marks: Number(question.marks || 1)
-    }))
-  }));
+  const normalizedSections = sections.map((section, sectionIndex) => {
+    const sectionTitle = section.title || `Section ${String.fromCharCode(65 + sectionIndex)}`;
+    const isMcqSection = isMcq(sectionTitle);
+    return {
+      id: section.id || String.fromCharCode(97 + sectionIndex),
+      title: sectionTitle,
+      instruction: section.instruction || "Attempt all questions.",
+      questions: (section.questions || []).map((question, questionIndex) => {
+        const text = question.text || `Question ${questionIndex + 1}`;
+        const options = normalizeOptions(question.options, input, questionIndex, isMcqSection);
+        return {
+          id: question.id || randomUUID(),
+          text,
+          ...(options.length ? { options } : {}),
+          difficulty: normalizeDifficulty(question.difficulty),
+          marks: Number(question.marks || 1)
+        };
+      })
+    };
+  });
 
   return {
     title: sourceTitle(input) || paper.title || input.title,
@@ -95,6 +121,7 @@ function fallbackPaper(input: AssignmentInput): GeneratedPaper {
         questions: Array.from({ length: type.count }, (_, questionIndex) => ({
           id: randomUUID(),
           text: makeQuestion(input, type.label, questionIndex),
+          ...(isMcq(type.label) ? { options: makeOptions(input, questionIndex) } : {}),
           difficulty: pickDifficulty(questionIndex),
           marks: type.marks
         }))
@@ -175,6 +202,31 @@ function isGroundedInSource(paper: GeneratedPaper, input: AssignmentInput) {
 
 function pickDifficulty(index: number): Difficulty {
   return (["easy", "medium", "hard"] as const)[index % 3];
+}
+
+function isMcq(label: string) {
+  return /multiple choice|mcq/i.test(label);
+}
+
+function normalizeOptions(value: unknown, input: AssignmentInput, index: number, shouldHaveOptions: boolean) {
+  if (!shouldHaveOptions) return [];
+  if (Array.isArray(value)) {
+    const options = value.map((option) => String(option).trim()).filter(Boolean).slice(0, 4);
+    if (options.length === 4) return options;
+  }
+  return makeOptions(input, index);
+}
+
+function makeOptions(input: AssignmentInput, index: number) {
+  const concepts = extractConcepts(input);
+  const correct = concepts[index % concepts.length] ?? input.title;
+  const distractors = concepts.filter((concept) => concept !== correct).slice(0, 3);
+  const fallbackDistractors = ["A character encoding", "A vocabulary item", "A text processing rule", "A linguistic unit"];
+  return [correct, ...distractors, ...fallbackDistractors].slice(0, 4).map((option) => capitalize(option));
+}
+
+function capitalize(value: string) {
+  return value.charAt(0).toUpperCase() + value.slice(1);
 }
 
 function inferDuration(input: AssignmentInput) {

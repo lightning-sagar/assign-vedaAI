@@ -21,6 +21,7 @@ export type AssignmentForm = {
 export type Question = {
   id: string;
   text: string;
+  options?: string[];
   difficulty: Difficulty;
   marks: number;
 };

@@ -11,6 +11,7 @@ import { enqueueGeneration, enqueuePdf, setupQueue } from "./queue.js";
 import { attachWebSockets } from "./wsHub.js";
 import { renderPdf } from "./pdf.js";
 import { extractSourceText } from "./ai/sourceExtractor.js";
+import { hydrateMissingMcqOptions } from "./ai/generator.js";
 import type { AssignmentRecord } from "./types.js";
 
 dotenv.config({ path: path.resolve(process.cwd(), "../.env") });
@@ -61,6 +62,9 @@ app.get("/api/assignments/:id", async (req, res) => {
     res.status(404).json({ message: "Assignment not found" });
     return;
   }
+  if (assignment.paper) {
+    assignment.paper = hydrateMissingMcqOptions(assignment.paper, assignment);
+  }
   res.json(assignment);
 });
 
@@ -90,6 +94,7 @@ app.get("/api/assignments/:id/pdf", async (req, res) => {
     res.status(404).json({ message: "Generated paper not found" });
     return;
   }
+  assignment.paper = hydrateMissingMcqOptions(assignment.paper, assignment);
   const buffer = await renderPdf(assignment);
   res.setHeader("Content-Type", "application/pdf");
   res.setHeader("Content-Disposition", `attachment; filename="${assignment.title.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}.pdf"`);

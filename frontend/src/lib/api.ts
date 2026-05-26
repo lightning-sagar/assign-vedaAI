@@ -35,6 +35,12 @@ export async function fetchAssignment(id: string) {
   return (await response.json()) as Assignment;
 }
 
+export async function fetchAssignments() {
+  const response = await fetch(`${API_URL}/api/assignments`);
+  if (!response.ok) throw new Error("Unable to load assignments");
+  return (await response.json()) as Assignment[];
+}
+
 export async function deleteAssignment(id: string) {
   const response = await fetch(`${API_URL}/api/assignments/${id}`, { method: "DELETE" });
   if (!response.ok) throw new Error("Unable to delete assignment");
